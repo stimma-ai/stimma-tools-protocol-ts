@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.dev.vars
+.dev.vars.*
+.claude/settings.local.json
+.mcp.json
+.wrangler
+.env
+.env.*
+*.local

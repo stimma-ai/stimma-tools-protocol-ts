@@ -296,6 +296,10 @@ export interface ToolDescriptorData {
   output_schema: Record<string, unknown>;
   metadata: Record<string, unknown>;
   layout?: unknown[];
+  // Lab/company that made the model (e.g. "black-forest-labs"). Distinct from `provider`.
+  model_vendor?: string;
+  // Specific model, tight to parameters (e.g. "flux2-klein-9b"). Distinct from `provider`.
+  model?: string;
 }
 
 export class ToolDescriptor {
@@ -306,6 +310,8 @@ export class ToolDescriptor {
   outputSchema: Record<string, unknown>;
   layout?: unknown[];
   metadata: Record<string, unknown>;
+  modelVendor?: string;
+  model?: string;
 
   constructor(opts: {
     id: string;
@@ -315,6 +321,8 @@ export class ToolDescriptor {
     outputSchema?: Record<string, unknown>;
     layout?: unknown[];
     metadata?: Record<string, unknown>;
+    modelVendor?: string;
+    model?: string;
   }) {
     this.id = opts.id;
     this.name = opts.name;
@@ -323,6 +331,8 @@ export class ToolDescriptor {
     this.outputSchema = opts.outputSchema ?? {};
     this.layout = opts.layout;
     this.metadata = opts.metadata ?? {};
+    this.modelVendor = opts.modelVendor;
+    this.model = opts.model;
   }
 
   toDict(): ToolDescriptorData {
@@ -336,6 +346,12 @@ export class ToolDescriptor {
     };
     if (this.layout !== undefined) {
       result.layout = this.layout;
+    }
+    if (this.modelVendor !== undefined) {
+      result.model_vendor = this.modelVendor;
+    }
+    if (this.model !== undefined) {
+      result.model = this.model;
     }
     return result;
   }

@@ -134,6 +134,8 @@ export class Tool {
   metadata: Record<string, unknown>;
   displayPrice?: string;
   badges?: string[];
+  modelVendor?: string;
+  model?: string;
 
   constructor(opts: {
     slug: string;
@@ -146,6 +148,8 @@ export class Tool {
     metadata?: Record<string, unknown>;
     displayPrice?: string;
     badges?: string[];
+    modelVendor?: string;
+    model?: string;
   }) {
     this.slug = opts.slug;
     this.displayName = opts.displayName;
@@ -157,6 +161,8 @@ export class Tool {
     this.metadata = opts.metadata ?? {};
     this.displayPrice = opts.displayPrice;
     this.badges = opts.badges;
+    this.modelVendor = opts.modelVendor;
+    this.model = opts.model;
   }
 
   toDescriptor(): ToolDescriptor {
@@ -232,6 +238,8 @@ export class Tool {
       outputSchema,
       layout: layoutList,
       metadata: serializableMetadata,
+      modelVendor: this.modelVendor,
+      model: this.model,
     });
   }
 }

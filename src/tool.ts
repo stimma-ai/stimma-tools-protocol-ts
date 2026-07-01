@@ -82,6 +82,7 @@ export interface ToolParameterDef {
   maximum?: number;
   items?: Record<string, unknown>;
   uiHints?: Record<string, unknown>;
+  acceptedMedia?: { mimeTypes: string[]; transcodeTo?: string; maxBytes?: number };
 }
 
 function parameterToSchema(p: ToolParameterDef): Record<string, unknown> {
@@ -96,6 +97,17 @@ function parameterToSchema(p: ToolParameterDef): Record<string, unknown> {
     for (const [key, value] of Object.entries(p.uiHints)) {
       schema[`x-${key}`] = value;
     }
+  }
+  if (p.acceptedMedia) {
+    schema["x-accept-media"] = {
+      mime_types: p.acceptedMedia.mimeTypes,
+      ...(p.acceptedMedia.transcodeTo !== undefined
+        ? { transcode_to: p.acceptedMedia.transcodeTo }
+        : {}),
+      ...(p.acceptedMedia.maxBytes != null
+        ? { max_bytes: p.acceptedMedia.maxBytes }
+        : {}),
+    };
   }
   return schema;
 }

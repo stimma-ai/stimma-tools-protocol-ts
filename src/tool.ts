@@ -4,6 +4,25 @@
 
 import { ToolDescriptor } from "./protocol.js";
 
+// Standard STP task type registry. Providers may still declare custom task types
+// using the x-<vendor>-<task> extension convention from the STP spec.
+export const STANDARD_TASK_TYPES = [
+  "text-to-image",
+  "image-to-image",
+  "image-to-video",
+  "text-to-video",
+  "video-to-video",
+  "video-stitch",
+  "video-extend",
+  "lip-sync",
+  "upscale-image",
+  "upscale-video",
+  "inpaint-image",
+  "remove-background",
+] as const;
+
+export type StandardTaskType = (typeof STANDARD_TASK_TYPES)[number];
+
 // --- Layout DSL ---
 
 export interface ParamRef {

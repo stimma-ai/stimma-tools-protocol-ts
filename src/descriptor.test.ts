@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ToolDescriptor } from "./protocol.js";
-import { Tool } from "./tool.js";
+import { STANDARD_TASK_TYPES, Tool } from "./tool.js";
+
+describe("standard task types", () => {
+  it("includes video-to-video beside image-to-image", () => {
+    expect(STANDARD_TASK_TYPES).toContain("image-to-image");
+    expect(STANDARD_TASK_TYPES).toContain("video-to-video");
+  });
+});
 
 describe("ToolDescriptor model_vendor / model", () => {
   it("serializes model fields when present", () => {

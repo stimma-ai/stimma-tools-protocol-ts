@@ -32,6 +32,7 @@ export type {
 
 // Tool
 export {
+  STANDARD_TASK_TYPES,
   Param,
   Group,
   Tool,
@@ -41,6 +42,7 @@ export {
 } from "./tool.js";
 
 export type {
+  StandardTaskType,
   ParamRef,
   GroupDef,
   ToolParameterDef,

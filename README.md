@@ -83,4 +83,4 @@ See `examples/hello-world/` for a working provider.
 
 ## License
 
-Apache 2.0
+Apache License 2.0. See [LICENSE](LICENSE).

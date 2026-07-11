@@ -112,6 +112,7 @@ interface Job {
   parameters: Record<string, unknown>;
   abortController: AbortController;
   cancelled: boolean;
+  execution?: Promise<void>;
 }
 
 // --- Provider ---
@@ -233,12 +234,27 @@ export class Provider {
     this._shutdownResolve?.();
 
     // Cancel all running jobs
+    const runningExecutions: Promise<void>[] = [];
     for (const job of this._runningJobs.values()) {
       job.abortController.abort();
+      if (job.execution) runningExecutions.push(job.execution);
     }
 
     // Stop job processor
     this._jobProcessorAbort?.abort();
+
+    // Give cooperative AbortSignal consumers time to finish their cleanup and
+    // publish cancellation results before disconnecting the transport.
+    if (runningExecutions.length > 0) {
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        Promise.allSettled(runningExecutions),
+        new Promise<void>((resolve) => {
+          timeout = setTimeout(resolve, 1000);
+        }),
+      ]);
+      if (timeout) clearTimeout(timeout);
+    }
 
     // Send disconnect notification
     if (this._handler) {
@@ -466,12 +482,24 @@ export class Provider {
         continue;
       }
 
-      const job = this._queuedJobs.shift()!;
-
+      // Keep the next job visible in the queue until execution capacity is
+      // available, so queue.status and tools.cancel remain truthful.
       await this._jobSemaphore.acquire();
 
+      if (this._shutdownRequested) {
+        this._jobSemaphore.release();
+        break;
+      }
+      const job = this._queuedJobs.shift();
+      if (!job) {
+        // It may have been cancelled while capacity was pending.
+        this._jobSemaphore.release();
+        continue;
+      }
+
       this._runningJobs.set(job.requestId, job);
-      this._executeJob(job).catch(() => {});
+      job.execution = this._executeJob(job);
+      job.execution.catch(() => {});
       await this._sendQueueStatus();
     }
   }

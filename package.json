@@ -34,5 +34,10 @@
     "vite-plugin-dts": "^3.7.0",
     "vitest": "^1.2.0"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stimma-ai/stimma-tools-protocol-ts.git"
+  },
+  "homepage": "https://github.com/stimma-ai/stimma-tools-protocol-ts"
 }

@@ -5,6 +5,7 @@ import { STANDARD_TASK_TYPES, Tool } from "./tool.js";
 describe("standard task types", () => {
   it("includes video-to-video beside image-to-image", () => {
     expect(STANDARD_TASK_TYPES).toContain("image-to-image");
+    expect(STANDARD_TASK_TYPES).toContain("reference-to-video");
     expect(STANDARD_TASK_TYPES).toContain("video-to-video");
   });
 });
@@ -94,5 +95,28 @@ describe("x-accept-media parameter schema", () => {
     const props = (d.parameter_schema as Record<string, unknown>)
       .properties as Record<string, Record<string, unknown>>;
     expect("x-accept-media" in props.audio).toBe(false);
+  });
+});
+
+describe("cross-field required alternatives", () => {
+  it("emits JSON Schema anyOf branches", () => {
+    const tool = new Tool({
+      slug: "reference-to-video",
+      displayName: "Reference to Video",
+      taskTypes: ["reference-to-video"],
+      execute: async () => ({ assets: [] }),
+      parameters: [
+        { name: "input_images", type: "array" },
+        { name: "input_videos", type: "array" },
+        { name: "input_audios", type: "array" },
+      ],
+      requiredAny: [["input_images"], ["input_videos"], ["input_audios"]],
+    });
+
+    expect(tool.toDescriptor().parameterSchema.anyOf).toEqual([
+      { required: ["input_images"], properties: { input_images: { minItems: 1 } } },
+      { required: ["input_videos"], properties: { input_videos: { minItems: 1 } } },
+      { required: ["input_audios"], properties: { input_audios: { minItems: 1 } } },
+    ]);
   });
 });

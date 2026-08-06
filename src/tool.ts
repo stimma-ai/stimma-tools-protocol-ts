@@ -10,6 +10,7 @@ export const STANDARD_TASK_TYPES = [
   "text-to-image",
   "image-to-image",
   "image-to-video",
+  "reference-to-video",
   "text-to-video",
   "video-to-video",
   "video-stitch",
@@ -167,6 +168,7 @@ export class Tool {
   badges?: string[];
   modelVendor?: string;
   model?: string;
+  requiredAny?: string[][];
 
   constructor(opts: {
     slug: string;
@@ -181,6 +183,7 @@ export class Tool {
     badges?: string[];
     modelVendor?: string;
     model?: string;
+    requiredAny?: string[][];
   }) {
     this.slug = opts.slug;
     this.displayName = opts.displayName;
@@ -194,6 +197,7 @@ export class Tool {
     this.badges = opts.badges;
     this.modelVendor = opts.modelVendor;
     this.model = opts.model;
+    this.requiredAny = opts.requiredAny;
   }
 
   toDescriptor(): ToolDescriptor {
@@ -210,6 +214,23 @@ export class Tool {
     };
     if (paramRequired.length > 0) {
       parameterSchema.required = paramRequired;
+    }
+    if (this.requiredAny?.length) {
+      parameterSchema.anyOf = this.requiredAny
+        .filter((fields) => fields.length > 0)
+        .map((fields) => {
+          const arrayFields = Object.fromEntries(
+            fields
+              .filter((name) =>
+                (paramProperties[name] as Record<string, unknown> | undefined)?.type === "array"
+              )
+              .map((name) => [name, { minItems: 1 }]),
+          );
+          return {
+            required: fields,
+            ...(Object.keys(arrayFields).length > 0 ? { properties: arrayFields } : {}),
+          };
+        });
     }
 
     // Output schema (standard: list of produced assets)

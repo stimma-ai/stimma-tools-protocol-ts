@@ -370,7 +370,7 @@ export class Provider {
   protected async onRegistered(): Promise<void> {}
 
   /** Send provider.state (capability `provider_state`). */
-  async sendState(state: "ready" | "warning" | "error", summary?: string): Promise<void> {
+  async sendState(state: "ready" | "in_progress" | "warning" | "error", summary?: string): Promise<void> {
     if (!this._handler || !this._config.providerState) return;
     const params: Record<string, unknown> = { state };
     if (summary) params.summary = summary;

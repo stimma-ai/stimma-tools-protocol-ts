@@ -213,6 +213,13 @@ export interface ProviderRegistrationData {
   max_concurrent: number;
   capabilities: Record<string, unknown>;
   asset_endpoint?: string;
+  presentation?: ProviderPresentation;
+}
+
+/** Presentation hints: an icon (data: URI, ≤32 KiB) and/or a management UI URL. */
+export interface ProviderPresentation {
+  icon?: string;
+  management_url?: string;
 }
 
 export class ProviderRegistration {
@@ -222,6 +229,7 @@ export class ProviderRegistration {
   maxConcurrent: number;
   capabilities: Record<string, unknown>;
   assetEndpoint?: string;
+  presentation?: ProviderPresentation;
   stpVersion: string;
 
   constructor(opts: {
@@ -231,6 +239,7 @@ export class ProviderRegistration {
     maxConcurrent?: number;
     capabilities?: Record<string, unknown>;
     assetEndpoint?: string;
+    presentation?: ProviderPresentation;
     stpVersion?: string;
   }) {
     this.providerId = opts.providerId;
@@ -239,6 +248,7 @@ export class ProviderRegistration {
     this.maxConcurrent = opts.maxConcurrent ?? 1;
     this.capabilities = opts.capabilities ?? {};
     this.assetEndpoint = opts.assetEndpoint;
+    this.presentation = opts.presentation;
     this.stpVersion = opts.stpVersion ?? STP_VERSION;
   }
 
@@ -255,6 +265,9 @@ export class ProviderRegistration {
     }
     if (this.assetEndpoint) {
       result.asset_endpoint = this.assetEndpoint;
+    }
+    if (this.presentation) {
+      result.presentation = this.presentation;
     }
     return result;
   }
@@ -300,6 +313,15 @@ export interface ToolDescriptorData {
   model_vendor?: string;
   // Specific model, tight to parameters (e.g. "flux2-klein-9b"). Distinct from `provider`.
   model?: string;
+  // Readiness (capability `tool_status`): omitted = ready.
+  status?: "ready" | "needs_setup";
+  status_items?: ToolStatusItem[];
+}
+
+export interface ToolStatusItem {
+  kind: "missing_model" | "missing_node" | "other";
+  name: string;
+  detail?: string;
 }
 
 export class ToolDescriptor {
@@ -312,6 +334,8 @@ export class ToolDescriptor {
   metadata: Record<string, unknown>;
   modelVendor?: string;
   model?: string;
+  status?: "ready" | "needs_setup";
+  statusItems?: ToolStatusItem[];
 
   constructor(opts: {
     id: string;
@@ -323,6 +347,8 @@ export class ToolDescriptor {
     metadata?: Record<string, unknown>;
     modelVendor?: string;
     model?: string;
+    status?: "ready" | "needs_setup";
+    statusItems?: ToolStatusItem[];
   }) {
     this.id = opts.id;
     this.name = opts.name;
@@ -333,6 +359,8 @@ export class ToolDescriptor {
     this.metadata = opts.metadata ?? {};
     this.modelVendor = opts.modelVendor;
     this.model = opts.model;
+    this.status = opts.status;
+    this.statusItems = opts.statusItems;
   }
 
   toDict(): ToolDescriptorData {
@@ -352,6 +380,10 @@ export class ToolDescriptor {
     }
     if (this.model !== undefined) {
       result.model = this.model;
+    }
+    if (this.status && this.status !== "ready") {
+      result.status = this.status;
+      result.status_items = this.statusItems ?? [];
     }
     return result;
   }

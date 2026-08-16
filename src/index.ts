@@ -26,6 +26,8 @@ export {
 export type {
   JsonRpcErrorData,
   ProviderRegistrationData,
+  ProviderPresentation,
+  ToolStatusItem,
   ToolDescriptorData,
   ParsedMessage,
 } from "./protocol.js";

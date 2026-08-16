@@ -102,6 +102,10 @@ export interface ProviderConfig {
   maxConcurrent?: number;
   supportsCancel?: boolean; // exposed as the `cancel` capability
   assetEndpoint?: string;
+  // Optional presentation hints sent at registration (icon data URI, management UI URL).
+  presentation?: { icon?: string; management_url?: string };
+  // Emit provider.state / provider.notify (capability `provider_state`).
+  providerState?: boolean;
 }
 
 // --- Job ---
@@ -327,8 +331,12 @@ export class Provider {
       providerName: this._config.providerName,
       server: this._config.server,
       maxConcurrent: this._config.maxConcurrent,
-      capabilities: { cancel: this._config.supportsCancel ?? false },
+      capabilities: {
+        cancel: this._config.supportsCancel ?? false,
+        ...(this._config.providerState ? { provider_state: true } : {}),
+      },
       assetEndpoint,
+      presentation: this._config.presentation,
     });
 
     const response = await this._handler.sendRequest(
@@ -344,8 +352,46 @@ export class Provider {
       response.result as Record<string, unknown>,
     );
     this._sessionId = result.sessionId;
+    this.hostCapabilities = result.capabilities ?? {};
 
     logger.info(`Registered with session ID: ${this._sessionId}`);
+    await this.onRegistered();
+  }
+
+  /** Capabilities the host advertised in the registration response. */
+  hostCapabilities: Record<string, unknown> = {};
+
+  /** True when the host accepts needs_setup tools (`tool_status`). */
+  get hostWantsToolStatus(): boolean {
+    return this.hostCapabilities.tool_status === true;
+  }
+
+  /** Called after each successful registration. Override to (re)send provider state. */
+  protected async onRegistered(): Promise<void> {}
+
+  /** Send provider.state (capability `provider_state`). */
+  async sendState(state: "ready" | "warning" | "error", summary?: string): Promise<void> {
+    if (!this._handler || !this._config.providerState) return;
+    const params: Record<string, unknown> = { state };
+    if (summary) params.summary = summary;
+    await this._handler.sendNotification("provider.state", params);
+  }
+
+  /** Send provider.notify — a milestone the host may show as a toast. */
+  async notify(opts: {
+    id: string;
+    title: string;
+    level?: "info" | "warning" | "error";
+    body?: string;
+    action?: "manage";
+    anchor?: string;
+  }): Promise<void> {
+    if (!this._handler || !this._config.providerState) return;
+    const params: Record<string, unknown> = { id: opts.id, level: opts.level ?? "info", title: opts.title };
+    if (opts.body) params.body = opts.body;
+    if (opts.action) params.action = opts.action;
+    if (opts.anchor) params.anchor = opts.anchor;
+    await this._handler.sendNotification("provider.notify", params);
   }
 
   private async _handleRequest(

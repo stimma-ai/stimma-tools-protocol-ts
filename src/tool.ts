@@ -2,7 +2,7 @@
  * Tool definition and registry for STP tools.
  */
 
-import { ToolDescriptor } from "./protocol.js";
+import { ToolDescriptor, ToolStatusItem } from "./protocol.js";
 
 // Standard STP task type registry. Providers may still declare custom task types
 // using the x-<vendor>-<task> extension convention from the STP spec.
@@ -168,6 +168,9 @@ export class Tool {
   badges?: string[];
   modelVendor?: string;
   model?: string;
+  // Readiness (capability `tool_status`): "ready" (default) or "needs_setup".
+  status?: "ready" | "needs_setup";
+  statusItems?: ToolStatusItem[];
   requiredAny?: string[][];
 
   constructor(opts: {
@@ -183,6 +186,8 @@ export class Tool {
     badges?: string[];
     modelVendor?: string;
     model?: string;
+    status?: "ready" | "needs_setup";
+    statusItems?: ToolStatusItem[];
     requiredAny?: string[][];
   }) {
     this.slug = opts.slug;
@@ -197,6 +202,8 @@ export class Tool {
     this.badges = opts.badges;
     this.modelVendor = opts.modelVendor;
     this.model = opts.model;
+    this.status = opts.status;
+    this.statusItems = opts.statusItems;
     this.requiredAny = opts.requiredAny;
   }
 
@@ -292,6 +299,8 @@ export class Tool {
       metadata: serializableMetadata,
       modelVendor: this.modelVendor,
       model: this.model,
+      status: this.status,
+      statusItems: this.statusItems,
     });
   }
 }

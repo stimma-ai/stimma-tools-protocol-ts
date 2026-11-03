@@ -8,11 +8,11 @@ import { Provider } from "./provider.js";
 import { MemoryTransport } from "./test-helpers.js";
 import { Tool, ToolRegistry } from "./tool.js";
 
-async function startProvider(provider: Provider, transport: MemoryTransport, assets: FilesystemAssetManager) {
+async function startProvider(provider: Provider, transport: MemoryTransport, assets: FilesystemAssetManager, sidecars = false) {
   const starting = provider.start(assets);
   const registration = await transport.hostReceive("provider.register");
   expect(registration.params).toMatchObject({ stp_version: "1.0", capabilities: { cancel: true } });
-  transport.hostRespond(registration, { session_id: "session-1", stp_version: "1.0" });
+  transport.hostRespond(registration, { session_id: "session-1", stp_version: "1.0", capabilities: { media_sidecars: sidecars } });
   await starting;
 }
 
@@ -30,7 +30,7 @@ async function hostRequest(
 }
 
 describe("provider lifecycle", () => {
-  it("lists and executes tools with defaults, progress, and normalized assets", async () => {
+  it.each([false, true])("preserves opaque companions through queued execution (host support %s)", async (sidecars) => {
     const transport = new MemoryTransport();
     const registry = new ToolRegistry();
     registry.register(new Tool({
@@ -42,11 +42,13 @@ describe("provider lifecycle", () => {
         { name: "steps", type: "integer", default: 4 },
       ],
       execute: async (context, parameters) => {
+        expect(context.inputSidecars).toEqual({ "source.mp4": [{ format: "other.state", format_version: 2, descriptor: { arbitrary: [1, true] } }] });
+        expect(parameters.input_sidecars).toBeUndefined();
         expect(parameters.steps).toBe(4);
         expect(parameters._provided_keys).toEqual(new Set(["prompt"]));
         await context.reportProgress(0.5);
         const assetId = await context.assets.upload(Buffer.from("image"), ".png");
-        return { asset_id: assetId, seed: 12 };
+        return { asset_id: assetId, seed: 12, sidecars: [{ asset_id: "opaque.bin", format: "other.state", format_version: 2 }] };
       },
     }));
     const provider = new Provider({
@@ -55,12 +57,13 @@ describe("provider lifecycle", () => {
       toolRegistry: registry,
     });
     const dir = await mkdtemp(join(tmpdir(), "stp-provider-"));
-    await startProvider(provider, transport, new FilesystemAssetManager(dir));
+    await startProvider(provider, transport, new FilesystemAssetManager(dir), sidecars);
 
     const listed = await hostRequest(transport, "tools.list", 1);
     expect(((listed.result as { tools: Array<{ id: string }> }).tools)[0].id).toBe("image");
     await expect(hostRequest(transport, "tools.execute", 2, {
       request_id: "job-1", tool_id: "image", parameters: { prompt: "hi" },
+      input_sidecars: { "source.mp4": [{ format: "other.state", format_version: 2, descriptor: { arbitrary: [1, true] } }] },
     })).resolves.toMatchObject({ result: { accepted: true } });
 
     const notifications: Record<string, unknown>[] = [];
@@ -74,6 +77,8 @@ describe("provider lifecycle", () => {
     expect(result.output.seed).toBe(12);
     expect(result.output.assets[0].type).toBe("image");
 
+    const assetsOut = (result.output as { assets: Array<Record<string, unknown>> }).assets;
+    expect(assetsOut[0].sidecars).toEqual(sidecars ? [{ asset_id: "opaque.bin", format: "other.state", format_version: 2 }] : undefined);
     await provider.stop();
     await expect(transport.hostReceive("provider.disconnect")).resolves.toMatchObject({
       params: { reason: "shutdown" },

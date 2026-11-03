@@ -13,6 +13,7 @@ import {
   ProviderRegistration,
   RegistrationResponse,
   ExecuteRequest,
+  type MediaSidecar,
   QueueStatus,
   ProgressNotification,
   ExecutionResult,
@@ -84,11 +85,11 @@ export function normalizeOutput(result: unknown): Record<string, unknown> {
   if ("assets" in obj) {
     return obj;
   }
-  const { asset_id, ...rest } = obj;
+  const { asset_id, sidecars, ...rest } = obj;
   return {
     ...rest,
     assets: asset_id
-      ? [{ asset_id, type: inferMediaType(asset_id as string), role: "primary" }]
+      ? [{ asset_id, type: inferMediaType(asset_id as string), role: "primary", ...(sidecars ? { sidecars } : {}) }]
       : [],
   };
 }
@@ -106,6 +107,7 @@ export interface ProviderConfig {
   presentation?: { icon?: string; management_url?: string };
   // Emit provider.state / provider.notify (capability `provider_state`).
   providerState?: boolean;
+  mediaSidecars?: boolean;
 }
 
 // --- Job ---
@@ -114,6 +116,7 @@ interface Job {
   requestId: string;
   tool: Tool;
   parameters: Record<string, unknown>;
+  inputSidecars: Record<string, MediaSidecar[]>;
   abortController: AbortController;
   cancelled: boolean;
   execution?: Promise<void>;
@@ -333,6 +336,7 @@ export class Provider {
       maxConcurrent: this._config.maxConcurrent,
       capabilities: {
         cancel: this._config.supportsCancel ?? false,
+        ...(this._config.mediaSidecars ? { media_sidecars: true } : {}),
         ...(this._config.providerState ? { provider_state: true } : {}),
       },
       assetEndpoint,
@@ -356,6 +360,13 @@ export class Provider {
 
     logger.info(`Registered with session ID: ${this._sessionId}`);
     await this.onRegistered();
+  }
+
+  private outputForHost(result: unknown): Record<string, unknown> {
+    const output = normalizeOutput(result);
+    if (this.hostCapabilities.media_sidecars) return output;
+    const assets = (output.assets ?? []) as Record<string, unknown>[];
+    return { ...output, assets: assets.map(({ sidecars: _sidecars, ...asset }) => asset) };
   }
 
   /** Capabilities the host advertised in the registration response. */
@@ -468,6 +479,7 @@ export class Provider {
       requestId: execRequest.requestId,
       tool,
       parameters: execRequest.parameters,
+      inputSidecars: execRequest.inputSidecars,
       abortController: new AbortController(),
       cancelled: false,
     };
@@ -584,6 +596,7 @@ export class Provider {
         requestId: job.requestId,
         tool: job.tool,
         parameters,
+        inputSidecars: job.inputSidecars,
         assets: this._assets,
         signal: job.abortController.signal,
         reportProgress: (progress: number) =>
@@ -596,7 +609,7 @@ export class Provider {
         await this._sendResult({
           requestId: job.requestId,
           success: true,
-          output: normalizeOutput(result),
+          output: this.outputForHost(result),
         });
       }
     } catch (e) {

@@ -1,3 +1,4 @@
+import type { MediaSidecar } from "./protocol.js";
 /**
  * Tool definition and registry for STP tools.
  */
@@ -136,6 +137,7 @@ function parameterToSchema(p: ToolParameterDef): Record<string, unknown> {
 
 export interface ExecutionContext {
   requestId: string;
+  inputSidecars?: Record<string, MediaSidecar[]>;
   tool: Tool;
   parameters: Record<string, unknown>;
   assets: {
@@ -254,6 +256,7 @@ export class Tool {
               asset_id: { type: "string" },
               type: { type: "string", enum: ["image", "video", "audio", "document"] },
               role: { type: "string" },
+              sidecars: { type: "array", items: { type: "object", required: ["format", "format_version"] } },
             },
           },
         },

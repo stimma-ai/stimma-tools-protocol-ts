@@ -389,19 +389,34 @@ export class ToolDescriptor {
   }
 }
 
+/** Model-owned descriptor; hosts preserve it without interpreting its format. */
+export interface MediaSidecar {
+  asset_id?: string;
+  format: string;
+  format_version: number;
+  descriptor?: Record<string, unknown>;
+  media_mapping?: Record<string, unknown>;
+  status?: "available" | "unavailable";
+  unavailable_reason?: string;
+  [key: string]: unknown;
+}
+
 export class ExecuteRequest {
   requestId: string;
   toolId: string;
   parameters: Record<string, unknown>;
+  inputSidecars: Record<string, MediaSidecar[]>;
 
   constructor(
     requestId: string,
     toolId: string,
     parameters: Record<string, unknown> = {},
+    inputSidecars: Record<string, MediaSidecar[]> = {},
   ) {
     this.requestId = requestId;
     this.toolId = toolId;
     this.parameters = parameters;
+    this.inputSidecars = inputSidecars;
   }
 
   static fromDict(data: Record<string, unknown>): ExecuteRequest {
@@ -409,6 +424,7 @@ export class ExecuteRequest {
       data.request_id as string,
       data.tool_id as string,
       (data.parameters as Record<string, unknown>) ?? {},
+      (data.input_sidecars as Record<string, MediaSidecar[]>) ?? {},
     );
   }
 }
